@@ -4,8 +4,11 @@ import key
 
 register(key.APP_ID, key.REST_API_KEY)
 
-class KeymochiTest(Object):
+class DataChunk(Object):
     pass
 
-keymochi = KeymochiTest(user="Jean", mood="happy")
-keymochi.save()
+#keymochi = KeymochiTest(user="Jean", mood="happy")
+#keymochi.save()
+
+print(DataChunk.Query.all())
+
