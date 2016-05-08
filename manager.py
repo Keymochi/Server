@@ -62,10 +62,10 @@ class KeyStrokeManager():
         return (feature - mean) / std
 
 
-    def saveParams(self):
+    def saveParams(self, path):
         means = np.mean(self.features, axis=0)
         stds = np.std(self.features, axis=0)
-        with open(KeyStrokeManager.m_path + 'params.csv', 'w') as csvfile:
+        with open(path, 'w') as csvfile:
             writer = csv.writer(csvfile, delimiter=',')
             for idx in range(len(self.features[0])):
                 m, s = means[idx], stds[idx]
@@ -92,6 +92,6 @@ class KeyStrokeManager():
         return cross_val_score(self.model, self.features, self.labels).mean()
 
 
-    def saveModel(self):
+    def saveModel(self, path):
         self.model.fit(self.features, self.labels)
-        joblib.dump(self.model, KeyStrokeManager.m_path + 'model.pkl', protocol=2) 
+        joblib.dump(self.model, path, protocol=2) 
