@@ -64,3 +64,4 @@ target/
 # Python
 *.pyc
 ParsePy/*
+.DS_Store
