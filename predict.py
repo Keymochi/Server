@@ -1,3 +1,4 @@
+import sys
 import numpy as np
 from parse_rest.connection import register
 from parse_rest.datatypes import Object
@@ -8,8 +9,6 @@ from sklearn.externals import joblib
 
 
 register(key.APP_ID, key.REST_API_KEY)
-modelPath = KeyStrokeManager.m_path + 'model.pkl'
-paramPath = KeyStrokeManager.m_path + 'params.csv'
 invEmotions = {v: k for (k,v) in KeyStrokeManager.emotions.items()}
 
 
@@ -32,8 +31,17 @@ def normalize(d):
 
 
 data = DataChunk.Query.all().order_by('-createdAt').limit(1)
-data = KeyStrokeManager.parseFeature(data, normalize=False)
-normalizedData = list(map( normalize, data ))
+
+if len(sys.argv) > 1 and sys.argv[1] == 'model-all':
+    modelPath = KeyStrokeManager.m_path + 'all.pkl'
+    paramPath = KeyStrokeManager.m_path + 'all_params.csv'
+else:
+    modelPath = KeyStrokeManager.m_path + data[0].userId + '.pkl'
+    paramPath = KeyStrokeManager.m_path + data[0].userId + '_params.csv'
+
+pData = KeyStrokeManager.parseFeature(data, normalize=False)
+nData = list(map( normalize, pData ))
 model = joblib.load(modelPath)
-results = list(map( lambda x: invEmotions[x], model.predict(normalizedData) ))
-print(results)
+results = list(map( lambda x: invEmotions[x], model.predict(nData) ))
+
+print(data[0].userId + ': ' + str(results))
