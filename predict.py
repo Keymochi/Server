@@ -39,7 +39,7 @@ else:
     modelPath = KeyStrokeManager.m_path + data[0].userId + '.pkl'
     paramPath = KeyStrokeManager.m_path + data[0].userId + '_params.csv'
 
-pData = KeyStrokeManager.parseFeature(data, normalize=False)
+pData = KeyStrokeManager.parseFeature(data, train=False)
 nData = list(map( normalize, pData ))
 model = joblib.load(modelPath)
 results = list(map( lambda x: invEmotions[x], model.predict(nData) ))

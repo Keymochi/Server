@@ -12,7 +12,7 @@ class KeyStrokeManager():
 
     featureName = ['accelerationMagnitudes', 'totalNumberOfDeletions', \
                     'gyroMagnitudes', 'interTapDistances', \
-                    'tapDurations', 'userId']
+                    'tapDurations', 'symbol_punctuation', 'userId']
     emotions = {'Happy': 0, 'Neutral': 1, 'Calm': 1, 'Sad': 2, \
                 'Angry': 3, 'Anxious': 4}
     uids = {'acsalu': 0, 'co273': 1, 'jean': 2}
@@ -27,8 +27,8 @@ class KeyStrokeManager():
 
 
     @classmethod
-    def parseFeature(cls, data, normalize=True):
-        [accMag, ttlNODel, gyro, intTapDist, tapDur, uid] = \
+    def parseFeature(cls, data, train=True):
+        [accMag, ttlNODel, gyro, intTapDist, tapDur, puncCount, uid] = \
         [[getattr(d, feature) for d in data] for feature in cls.featureName]
 
         aveAccMag, stdAccMag = \
@@ -39,17 +39,20 @@ class KeyStrokeManager():
                 [np.mean(i) for i in intTapDist], [np.std(i) for i in intTapDist]
         aveTapDur, stdTapDur = \
                 [np.mean(t) for t in tapDur], [np.std(t) for t in tapDur]
+        avePunc, stdPunc = \
+                [np.mean(p) for p in puncCount], [np.std(p) for p in puncCount]
         uidFea = list(map(lambda x: cls.uids[x], uid))
 
-        if normalize:
+
+        if train:
             features = list(map(cls.normalize, \
                     [aveAccMag, stdAccMag, aveGyro, stdGyro, \
                     aveIntTapDist, stdIntTapDist, \
-                    aveTapDur, stdTapDur, uidFea]))
+                    aveTapDur, stdTapDur, avePunc, stdPunc, uidFea]))
         else:
             features = [aveAccMag, stdAccMag, aveGyro, stdGyro, \
                         aveIntTapDist, stdIntTapDist, \
-                        aveTapDur, stdTapDur, uidFea]
+                        aveTapDur, stdTapDur, avePunc, stdPunc, uidFea]
 
         return np.array(features).T
 
