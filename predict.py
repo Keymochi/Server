@@ -32,7 +32,7 @@ def normalize(d):
 
 data = DataChunk.Query.all().order_by('-createdAt').limit(1)
 
-if len(sys.argv) > 1 and sys.argv[1] == 'model-all':
+if len(sys.argv) > 1 and sys.argv[1] == '--all-model':
     modelPath = KeyStrokeManager.m_path + 'all.pkl'
     paramPath = KeyStrokeManager.m_path + 'all_params.csv'
 else:
