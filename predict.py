@@ -9,7 +9,6 @@ from sklearn.externals import joblib
 
 
 register(key.APP_ID, key.REST_API_KEY)
-invEmotions = {v: k for (k,v) in KeyStrokeManager.emotions.items()}
 
 
 class DataChunk(Object):
@@ -42,6 +41,6 @@ else:
 pData = KeyStrokeManager.parseFeature(data, train=False)
 nData = list(map( normalize, pData ))
 model = joblib.load(modelPath)
-results = list(map( lambda x: invEmotions[x], model.predict(nData) ))
+results = list(map( lambda x: KeyStrokeManager.invEmotions[x], model.predict(nData) ))
 
-print(data[0].userId + ': ' + str(results))
+print(data[0].userId + ': ' + str(results) + '  ' + str(data[0].createdAt))
