@@ -15,20 +15,6 @@ class DataChunk(Object):
     pass
 
 
-def normalize(d):
-    features = []
-    fName = KeyStrokeManager.featureName
-    with open(paramPath, 'r') as csvfile:
-        reader = csv.reader(csvfile, delimiter=',')
-        for idx, row in enumerate(reader):
-            mean, std = float(row[0]), float(row[1])
-            if std == 0:
-                features.append(d[idx] - mean)
-            else:
-                features.append( (d[idx] - mean) / std )
-    return features
-
-
 data = DataChunk.Query.all().order_by('-createdAt').limit(1)
 
 if len(sys.argv) > 1 and sys.argv[1] == '--all-model':
@@ -38,9 +24,10 @@ else:
     modelPath = KeyStrokeManager.m_path + data[0].userId + '.pkl'
     paramPath = KeyStrokeManager.m_path + data[0].userId + '_params.csv'
 
-pData = KeyStrokeManager.parseFeature(data, train=False)
-nData = list(map( normalize, pData ))
+keyStrokeManager = KeyStrokeManager()
+normalizedFeatures = keyStrokeManager.parseTestFeatures(data, paramPath)
 model = joblib.load(modelPath)
-results = list(map( lambda x: KeyStrokeManager.invEmotions[x], model.predict(nData) ))
+predictions = model.predict(normalizedFeatures)
+results = [KeyStrokeManager.invEmotions[x] for x in predictions]
 
 print(data[0].userId + ': ' + str(results) + '  ' + str(data[0].createdAt))

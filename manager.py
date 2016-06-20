@@ -17,7 +17,7 @@ class KeyStrokeManager():
 
     featureName = ['accelerationMagnitudes', 'totalNumberOfDeletions', \
                     'gyroMagnitudes', 'interTapDistances', \
-                    'tapDurations', 'symbol_punctuation', 'userId']
+                    'tapDurations', 'symbol_punctuation']
     emotions = {'Happy': 0, 'Calm': 1, 'Sad': 2, \
                 'Angry': 3, 'Anxious': 4}
     invEmotions = {v: k for (k,v) in emotions.items()}
@@ -25,62 +25,89 @@ class KeyStrokeManager():
     m_path = 'pkl/'
 
 
-    def __init__(self, data):
+    def __init__(self):
         self.model = None
-        self.raw, self.features = KeyStrokeManager.parseFeature(data)
-        self.labels = list(map(lambda x: KeyStrokeManager.emotions[x.emotion]\
-                                , data))
+        self.features = []
+        self.normalizedFeatures = []
+        self.labels = []
+        self.n_classes = 0
+        self.paramPath = ""
+
+
+    def initializeTrainData(self, data):
+        self.features, self.normalizedFeatures = self.parseTrainFeatures(data)
+        self.labels = list(map(lambda x: KeyStrokeManager.emotions[x.emotion], data))
         self.n_classes = len(np.unique(self.labels))
 
 
-    @classmethod
-    def parseFeature(cls, data, train=True):
-        [accMag, ttlNODel, gyro, intTapDist, tapDur, puncCount, uid] = \
-        [[getattr(d, feature) for d in data] for feature in cls.featureName]
-
-        aveAccMag, stdAccMag = \
-                [np.mean(a) for a in accMag], [np.std(a) for a in accMag]
-        aveGyro, stdGyro = \
-                [np.mean(g) for g in gyro], [np.std(g) for g in gyro]
-        aveIntTapDist, stdIntTapDist = \
-                [np.mean(i) for i in intTapDist], [np.std(i) for i in intTapDist]
-        aveTapDur, stdTapDur = \
-                [np.mean(t) for t in tapDur], [np.std(t) for t in tapDur]
-        avePunc, stdPunc = \
-                [np.mean(p) for p in puncCount], [np.std(p) for p in puncCount]
-        uidFea = list(map(lambda x: cls.uids[x], uid))
+    def calculateAve(self, feature):
+        return [np.mean(a) for a in feature]
 
 
-        raw = [aveAccMag, stdAccMag, aveGyro, stdGyro, \
-                aveIntTapDist, stdIntTapDist, \
-                aveTapDur, stdTapDur, avePunc, stdPunc, uidFea]
-
-        if train:
-            features = list(map(cls.normalize, \
-                    [aveAccMag, stdAccMag, aveGyro, stdGyro, \
-                    aveIntTapDist, stdIntTapDist, \
-                    aveTapDur, stdTapDur, avePunc, stdPunc, uidFea]))
-
-        if train:
-            return (np.array(raw).T, np.array(features).T)
-        else:
-            return np.array(raw).T
+    def calculateStd(self, feature):
+        return [np.std(a) for a in feature]
 
 
-    def normalize(feature):
-        std = np.std(feature)
-        mean = np.mean(feature)
+    def calculateMobileFeatures(self, mobileFeatures):
+        aveFeatures = list(map(self.calculateAve, mobileFeatures))
+        stdFeatures = list(map(self.calculateStd, mobileFeatures))
+        aveAndStdFeatures = aveFeatures
+        aveAndStdFeatures.extend(stdFeatures)
+        return aveAndStdFeatures
+
+
+    def getAndCalculateFeatures(self, data):
+        rawFeatures = [[getattr(d, feature) for d in data] \
+                            for feature in KeyStrokeManager.featureName]
+        uid = [getattr(d, 'userId') for d in data]
+        mobileFeatures = self.calculateMobileFeatures(rawFeatures)
+        uidFeature = [list(map(lambda x: KeyStrokeManager.uids[x], uid))]
+        mixedFeatures = mobileFeatures
+        mixedFeatures.extend(uidFeature)
+        return mixedFeatures
+
+
+    def normalizeTrainFeatures(self, features):
+        std = np.std(features)
+        mean = np.mean(features)
         if std == 0:
-            return feature - mean
-        return (feature - mean) / std
+            return features - mean
+        return (features - mean) / std
+    
+
+    def parseTrainFeatures(self, data):
+        features = self.getAndCalculateFeatures(data)
+        self.normalizeTrainFeatures(features)
+        normalizedFeatures = list(map(self.normalizeTrainFeatures, features))
+        return np.array(features).T, np.array(normalizedFeatures).T
+
+
+    def normalizeTestFeatures(self, features):
+        normalizedFeatures = []
+        with open(self.paramPath, 'r') as csvfile:
+            reader = csv.reader(csvfile, delimiter=',')
+            for idx, row in enumerate(reader):
+                mean, std = float(row[0]), float(row[1])
+                if std == 0:
+                    normalizedFeatures.append(features[idx] - mean)
+                else:
+                    normalizedFeatures.append( (features[idx] - mean) / std )
+        return normalizedFeatures
+    
+
+    def parseTestFeatures(self, data, paramPath):
+        self.paramPath = paramPath
+        features = np.array(self.getAndCalculateFeatures(data)).T
+        normalizedFeatures = list(map(self.normalizeTestFeatures, features))
+        return normalizedFeatures
 
 
     def saveParams(self, path):
-        means = np.mean(self.raw, axis=0)
-        stds = np.std(self.raw, axis=0)
+        means = np.mean(self.features, axis=0)
+        stds = np.std(self.features, axis=0)
         with open(path, 'w') as csvfile:
             writer = csv.writer(csvfile, delimiter=',')
-            for idx in range(len(self.raw[0])):
+            for idx in range(len(self.features[0])):
                 m, s = means[idx], stds[idx]
                 writer.writerow([m, s])
 
@@ -102,14 +129,14 @@ class KeyStrokeManager():
 
 
     def crossValidScore(self):
-        return cross_val_score(self.model, self.features, self.labels).mean()
+        return cross_val_score(self.model, self.normalizedFeatures, self.labels).mean()
 
 
     def plotROC(self):
         labels = np.array(self.labels)
-        features = np.array(self.features)
+        features = np.array(self.normalizedFeatures)
 
-        cv = StratifiedKFold(self.labels, n_folds=6, shuffle=True)
+        cv = StratifiedKFold(self.labels, n_folds=3, shuffle=True)
         mean_tpr = [0.0] * self.n_classes
         mean_fpr = [np.linspace(0, 1, 100)] * self.n_classes
 
@@ -146,8 +173,9 @@ class KeyStrokeManager():
         plt.title('Receiver operating characteristic')
         plt.legend(loc="lower right")
         plt.show()
+        #plt.savefig('all.png')
 
 
     def saveModel(self, path):
-        self.model.fit(self.features, self.labels)
+        self.model.fit(self.normalizedFeatures, self.labels)
         joblib.dump(self.model, path, protocol=2) 
